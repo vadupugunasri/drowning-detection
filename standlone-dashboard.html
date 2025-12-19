@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Drowning Prevention System</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --background: #0a0f1a;
+      --foreground: #e2e8f0;
+      --card: #111827;
+      --card-border: #1e293b;
+      --muted: #94a3b8;
+      --primary: #3b82f6;
+      --success: #10b981;
+      --danger: #ef4444;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--background);
+      color: var(--foreground);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1.5rem;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      padding: 2rem 0;
+      border-bottom: 1px solid var(--card-border);
+      margin-bottom: 1.5rem;
+    }
+
+    .header-icon {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 1rem;
+      color: var(--primary);
+    }
+
+    .header h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #60a5fa, #3b82f6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header p {
+      color: var(--muted);
+      font-size: 0.875rem;
+      margin-top: 0.5rem;
+    }
+
+    /* Connection Status */
+    .connection-status {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 1.5rem;
+    }
+
+    .connection-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 9999px;
+      font-size: 0.75rem;
+    }
+
+    .connection-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      animation: pulse 2s infinite;
+    }
+
+    .connection-dot.disconnected {
+      background: var(--danger);
+      animation: none;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Status Panel */
+    .status-panel {
+      padding: 2rem;
+      border-radius: 1rem;
+      text-align: center;
+      margin-bottom: 1.5rem;
+      transition: all 0.3s ease;
+    }
+
+    .status-panel.safe {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
+      border: 2px solid rgba(16, 185, 129, 0.3);
+      box-shadow: 0 0 30px rgba(16, 185, 129, 0.2);
+    }
+
+    .status-panel.danger {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.1));
+      border: 2px solid rgba(239, 68, 68, 0.5);
+      box-shadow: 0 0 50px rgba(239, 68, 68, 0.4);
+      animation: danger-pulse 1s infinite;
+    }
+
+    @keyframes danger-pulse {
+      0%, 100% { box-shadow: 0 0 30px rgba(239, 68, 68, 0.4); }
+      50% { box-shadow: 0 0 60px rgba(239, 68, 68, 0.6); }
+    }
+
+    .status-icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 1rem;
+    }
+
+    .status-icon.safe { color: var(--success); }
+    .status-icon.danger { color: var(--danger); }
+
+    .status-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .status-title.safe { color: var(--success); }
+    .status-title.danger { 
+      color: var(--danger); 
+      animation: blink 0.5s infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .status-message {
+      color: var(--muted);
+      font-size: 0.875rem;
+    }
+
+    /* Sensor Cards Grid */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .sensor-card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      transition: all 0.3s ease;
+    }
+
+    .sensor-card.alert {
+      border-color: rgba(239, 68, 68, 0.5);
+      box-shadow: 0 0 20px rgba(239, 68, 68, 0.2);
+    }
+
+    .sensor-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+
+    .sensor-card-title {
+      font-size: 0.875rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .sensor-card-icon {
+      width: 24px;
+      height: 24px;
+      color: var(--primary);
+    }
+
+    .sensor-card.alert .sensor-card-icon {
+      color: var(--danger);
+    }
+
+    .sensor-card-value {
+      font-size: 3rem;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      line-height: 1;
+    }
+
+    .sensor-card.alert .sensor-card-value {
+      color: var(--danger);
+    }
+
+    .sensor-card-unit {
+      font-size: 1rem;
+      color: var(--muted);
+      margin-left: 0.25rem;
+    }
+
+    /* Safe Ranges */
+    .safe-ranges {
+      background: rgba(17, 24, 39, 0.5);
+      border: 1px solid var(--card-border);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .safe-ranges h3 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+
+    .ranges-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+
+    .range-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(30, 41, 59, 0.5);
+      padding: 0.75rem 1rem;
+      border-radius: 0.5rem;
+    }
+
+    .range-label {
+      font-size: 0.875rem;
+      color: var(--muted);
+    }
+
+    .range-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.875rem;
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--card-border);
+    }
+
+    footer p {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    footer p:last-child {
+      opacity: 0.6;
+      margin-top: 0.25rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .header h1 { font-size: 1.25rem; }
+      .status-title { font-size: 1.25rem; }
+      .sensor-card-value { font-size: 2.5rem; }
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <svg class="header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <circle cx="12" cy="12" r="4"/>
+        <path d="M4.93 4.93l4.24 4.24"/>
+        <path d="M14.83 14.83l4.24 4.24"/>
+        <path d="M14.83 9.17l4.24-4.24"/>
+        <path d="M4.93 19.07l4.24-4.24"/>
+      </svg>
+      <h1>Smart Drowning Prevention System</h1>
+      <p>Real-time IoT Monitoring Dashboard</p>
+    </header>
+
+    <!-- Connection Status -->
+    <div class="connection-status">
+      <div class="connection-badge">
+        <span class="connection-dot" id="connectionDot"></span>
+        <span id="connectionText">Connected</span>
+        <span style="margin-left: 0.5rem; opacity: 0.6;" id="lastUpdate"></span>
+      </div>
+    </div>
+
+    <!-- Status Panel -->
+    <div class="status-panel safe" id="statusPanel">
+      <svg class="status-icon safe" id="statusIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+        <path d="m9 12 2 2 4-4"/>
+      </svg>
+      <h2 class="status-title safe" id="statusTitle">System Normal – Monitoring</h2>
+      <p class="status-message" id="statusMessage">All sensors operating within safe parameters</p>
+    </div>
+
+    <!-- Sensor Cards -->
+    <div class="cards-grid">
+      <div class="sensor-card" id="heartRateCard">
+        <div class="sensor-card-header">
+          <span class="sensor-card-title">Heart Rate</span>
+          <svg class="sensor-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+          </svg>
+        </div>
+        <div>
+          <span class="sensor-card-value" id="heartRateValue">72</span>
+          <span class="sensor-card-unit">BPM</span>
+        </div>
+      </div>
+
+      <div class="sensor-card" id="pressureCard">
+        <div class="sensor-card-header">
+          <span class="sensor-card-title">Water Pressure</span>
+          <svg class="sensor-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>
+            <path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>
+            <path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>
+          </svg>
+        </div>
+        <div>
+          <span class="sensor-card-value" id="pressureValue">45</span>
+          <span class="sensor-card-unit">kPa</span>
+        </div>
+      </div>
+
+      <div class="sensor-card" id="systemCard">
+        <div class="sensor-card-header">
+          <span class="sensor-card-title">System Status</span>
+          <svg class="sensor-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/>
+          </svg>
+        </div>
+        <div>
+          <span class="sensor-card-value" id="systemValue">OK</span>
+          <span class="sensor-card-unit"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Safe Ranges -->
+    <div class="safe-ranges">
+      <h3>Safe Operating Ranges</h3>
+      <div class="ranges-grid">
+        <div class="range-item">
+          <span class="range-label">Heart Rate</span>
+          <span class="range-value">60 - 100 BPM</span>
+        </div>
+        <div class="range-item">
+          <span class="range-label">Water Pressure</span>
+          <span class="range-value">&lt; 80 kPa</span>
+        </div>
+        <div class="range-item">
+          <span class="range-label">Alert Condition</span>
+          <span class="range-value" style="font-size: 0.75rem;">Abnormal HR + High Pressure</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+      <p>Smart Drowning Prevention System — Monitoring Dashboard v1.0</p>
+      <p>This dashboard is for monitoring purposes only and does not control any life-saving actions.</p>
+    </footer>
+  </div>
+
+  <script>
+    // Configuration - UPDATE THESE FOR YOUR ESP32
+    const CONFIG = {
+      simulateData: true,  // Set to false when using real ESP32
+      wsUrl: 'ws://192.168.1.100/ws',  // Your ESP32 WebSocket URL
+      httpUrl: 'http://192.168.1.100/sensor',  // Your ESP32 HTTP endpoint
+      httpPollInterval: 1000  // Poll interval in ms for HTTP
+    };
+
+    // Safe ranges
+    const SAFE_RANGES = {
+      heartRate: { min: 60, max: 100 },
+      pressure: { max: 80 }
+    };
+
+    // State
+    let sensorData = { heartRate: 72, waterPressure: 45 };
+    let isConnected = false;
+    let isDrowningDetected = false;
+    let audioContext = null;
+    let oscillator = null;
+
+    // DOM Elements
+    const elements = {
+      connectionDot: document.getElementById('connectionDot'),
+      connectionText: document.getElementById('connectionText'),
+      lastUpdate: document.getElementById('lastUpdate'),
+      statusPanel: document.getElementById('statusPanel'),
+      statusIcon: document.getElementById('statusIcon'),
+      statusTitle: document.getElementById('statusTitle'),
+      statusMessage: document.getElementById('statusMessage'),
+      heartRateCard: document.getElementById('heartRateCard'),
+      heartRateValue: document.getElementById('heartRateValue'),
+      pressureCard: document.getElementById('pressureCard'),
+      pressureValue: document.getElementById('pressureValue'),
+      systemCard: document.getElementById('systemCard'),
+      systemValue: document.getElementById('systemValue')
+    };
+
+    // Update UI
+    function updateUI() {
+      const isHeartRateAbnormal = sensorData.heartRate < SAFE_RANGES.heartRate.min || 
+                                   sensorData.heartRate > SAFE_RANGES.heartRate.max;
+      const isPressureHigh = sensorData.waterPressure > SAFE_RANGES.pressure.max;
+      isDrowningDetected = isHeartRateAbnormal && isPressureHigh;
+
+      // Update values
+      elements.heartRateValue.textContent = Math.round(sensorData.heartRate);
+      elements.pressureValue.textContent = Math.round(sensorData.waterPressure);
+      elements.systemValue.textContent = isDrowningDetected ? 'ALERT' : 'OK';
+
+      // Update cards
+      elements.heartRateCard.classList.toggle('alert', isHeartRateAbnormal);
+      elements.pressureCard.classList.toggle('alert', isPressureHigh);
+      elements.systemCard.classList.toggle('alert', isDrowningDetected);
+
+      // Update status panel
+      if (isDrowningDetected) {
+        elements.statusPanel.className = 'status-panel danger';
+        elements.statusIcon.className = 'status-icon danger';
+        elements.statusIcon.innerHTML = '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/>';
+        elements.statusTitle.className = 'status-title danger';
+        elements.statusTitle.textContent = '⚠️ DROWNING DETECTED – EMERGENCY ALERT';
+        elements.statusMessage.textContent = 'Abnormal heart rate and increased water pressure detected!';
+        playAlarm();
+      } else {
+        elements.statusPanel.className = 'status-panel safe';
+        elements.statusIcon.className = 'status-icon safe';
+        elements.statusIcon.innerHTML = '<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/>';
+        elements.statusTitle.className = 'status-title safe';
+        elements.statusTitle.textContent = 'System Normal – Monitoring';
+        elements.statusMessage.textContent = 'All sensors operating within safe parameters';
+        stopAlarm();
+      }
+
+      // Update connection status
+      elements.connectionDot.classList.toggle('disconnected', !isConnected);
+      elements.connectionText.textContent = isConnected ? 'Connected' : 'Disconnected';
+      elements.lastUpdate.textContent = new Date().toLocaleTimeString();
+    }
+
+    // Audio alarm
+    function playAlarm() {
+      if (oscillator) return;
+      try {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        oscillator.frequency.value = 800;
+        gainNode.gain.value = 0.3;
+        
+        // Warble effect
+        setInterval(() => {
+          if (oscillator) {
+            oscillator.frequency.value = oscillator.frequency.value === 800 ? 600 : 800;
+          }
+        }, 200);
+        
+        oscillator.start();
+      } catch (e) {
+        console.log('Audio not supported');
+      }
+    }
+
+    function stopAlarm() {
+      if (oscillator) {
+        oscillator.stop();
+        oscillator = null;
+      }
+      if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+      }
+    }
+
+    // Data simulation
+    function simulateData() {
+      let inDanger = false;
+      setInterval(() => {
+        // Toggle danger state every 10 seconds
+        if (Math.random() < 0.1) inDanger = !inDanger;
+        
+        if (inDanger) {
+          sensorData.heartRate = 40 + Math.random() * 10;
+          sensorData.waterPressure = 90 + Math.random() * 20;
+        } else {
+          sensorData.heartRate = 70 + Math.random() * 20;
+          sensorData.waterPressure = 30 + Math.random() * 30;
+        }
+        
+        isConnected = true;
+        updateUI();
+      }, 1000);
+    }
+
+    // WebSocket connection
+    function connectWebSocket() {
+      const ws = new WebSocket(CONFIG.wsUrl);
+      
+      ws.onopen = () => {
+        isConnected = true;
+        updateUI();
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          sensorData.heartRate = data.heartRate ?? sensorData.heartRate;
+          sensorData.waterPressure = data.waterPressure ?? data.pressure ?? sensorData.waterPressure;
+          updateUI();
+        } catch (e) {
+          console.error('Parse error:', e);
+        }
+      };
+      
+      ws.onclose = () => {
+        isConnected = false;
+        updateUI();
+        setTimeout(connectWebSocket, 3000);
+      };
+      
+      ws.onerror = () => {
+        ws.close();
+      };
+    }
+
+    // HTTP polling
+    function startHttpPolling() {
+      setInterval(async () => {
+        try {
+          const response = await fetch(CONFIG.httpUrl);
+          const data = await response.json();
+          sensorData.heartRate = data.heartRate ?? sensorData.heartRate;
+          sensorData.waterPressure = data.waterPressure ?? data.pressure ?? sensorData.waterPressure;
+          isConnected = true;
+          updateUI();
+        } catch (e) {
+          isConnected = false;
+          updateUI();
+        }
+      }, CONFIG.httpPollInterval);
+    }
+
+    // Initialize
+    if (CONFIG.simulateData) {
+      simulateData();
+    } else if (CONFIG.wsUrl) {
+      connectWebSocket();
+    } else if (CONFIG.httpUrl) {
+      startHttpPolling();
+    }
+
+    updateUI();
+  </script>
+</body>
+</html>
